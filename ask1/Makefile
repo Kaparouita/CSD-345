@@ -2,9 +2,10 @@ CC = gcc
 CFLAGS = -Wall
 LDFLAGS =
 
-SOURCES = shell.c commands.c
+SOURCES = commands.c execute.c noname.c shell.c 
 
-OBJECTS = $(SOURCES:.c=.o myshell)
+# You should specify each source file separately, not as part of OBJECTS
+OBJECTS = $(SOURCES:.c=.o)
 
 TARGET = shell
 
@@ -18,3 +19,4 @@ $(TARGET): $(OBJECTS)
 
 clean:
 	rm -f $(OBJECTS) $(TARGET)
+
