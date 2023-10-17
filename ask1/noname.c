@@ -6,16 +6,17 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <libgen.h> 
+
+
 
 
 int initFunc(){
-    current_dir = (char *)malloc(strlen("") + 1);  
+    current_dir = (char *)malloc(PATH_MAX);
+    if (getcwd(current_dir, PATH_MAX) != NULL) {
+        current_dir= basename(current_dir);
+    }
     return 0;
-}
-
-
-char *getcf() {
-    return current_dir;
 }
 
 

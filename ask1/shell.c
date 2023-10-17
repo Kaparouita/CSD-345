@@ -17,7 +17,7 @@ int main() {
     while (loopflag) {
         // Read a command from the user
         char input[ARGS_MAX];
-        printf("<4300>-hy345sh@<giorgis>%s", getcf());
+        printf("<4300>-hy345sh@<giorgis><%s>", get_current_dir());
         fgets(input, sizeof(input), stdin);
         execute_commands(input);
        
