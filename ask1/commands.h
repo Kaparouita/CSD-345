@@ -40,6 +40,7 @@ int is_built_in_cmd(char *cmd);
 
 int execute_built_in_commands(command *cmd);
 void execute_command_with_redirection(command *cmd);
+void execute_pipeline(command *cmd);
 
 char *get_current_dir();
 #endif

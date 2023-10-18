@@ -33,7 +33,7 @@ void execute_command_with_redirection(command *cmd)
     pid_t pid = fork();
     if (pid == 0)
     {
-        // Input Redirection >
+        // Input Redirection <
         if (cmd->symbol == I_redirect)
         {
             int input_fd = open(cmd->io_file, O_RDONLY);
@@ -42,11 +42,12 @@ void execute_command_with_redirection(command *cmd)
                 perror("Input redirection");
                 exit(1);
             }
-            dup2(input_fd, STDIN_FILENO);
+            close(STDIN_FILENO);          // Close the current stdin
+            dup2(input_fd, STDIN_FILENO); // Associate stdin with input_fd
             close(input_fd);
         }
 
-        // Output Redirection <
+        // Output Redirection >
         if (cmd->symbol == O_redirect)
         {
             int output_fd = open(cmd->io_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -88,13 +89,14 @@ void execute_command_with_redirection(command *cmd)
 
 void execute_pipeline(command *cmd)
 {
-
     int pipefds[2];
+    int prev_pipe = -1;
     pid_t child_pid;
-
     while (cmd != NULL)
     {
-        pipe(pipefds);
+        if (cmd->is_piped)
+            pipe(pipefds);
+
         child_pid = fork();
         if (child_pid == -1)
         {
@@ -103,20 +105,36 @@ void execute_pipeline(command *cmd)
         }
         else if (child_pid == 0)
         {
-            dup2(pipefds[1], STDOUT_FILENO);
-            close(pipefds[0]);
+            if (prev_pipe != -1)
+            {
+                dup2(prev_pipe, STDIN_FILENO);
+                close(prev_pipe);
+            }
+
+            if (cmd->is_piped)
+            {
+                dup2(pipefds[1], STDOUT_FILENO);
+                close(pipefds[0]);
+            }
+
+            // execute
             execvp(cmd->args[0], cmd->args);
             exit(EXIT_FAILURE);
         }
         else
         {
-            dup2(pipefds[0], STDIN_FILENO);
-            close(pipefds[1]);
-            cmd = cmd->next;
+            if (cmd->is_piped)
+            {
+                close(pipefds[1]);
+                prev_pipe = pipefds[0];
+            }
         }
+        cmd = cmd->next;
     }
 
-    // Wait for all child processes to complete
+    if (prev_pipe != -1)
+        close(prev_pipe);
+
     while (wait(NULL) > 0)
         ;
 }

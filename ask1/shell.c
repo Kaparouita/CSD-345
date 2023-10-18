@@ -43,20 +43,23 @@ void update_args(command *cmd, int i)
 {
     if (cmd->args[i + 1] == NULL)
     {
-        fprintf(stderr, "Wrong format for pipe\n");
+        fprintf(stderr, "Wrong format for redirection\n");
         exit(1);
     }
+    cmd->args[i] = NULL;
     cmd->io_file = cmd->args[i + 1];
 }
 
 int is_pipeline(char **command)
 {
-    for (int i = 0; command[i] != NULL; i++)
+    char **cmd = command;
+    while (*cmd != NULL)
     {
-        if (strcmp(command[i], "|") == 0)
+        if (strcmp(*cmd, "|") == 0)
         {
             return 1;
         }
+        cmd++;
     }
     return 0;
 }
@@ -65,54 +68,32 @@ int is_pipeline(char **command)
 command *create_pipeline(command *cmd)
 {
     int j, i = 0;
-    command *prev_cmd = NULL;
-    command *curr_cmd = cmd;
+    command *curr_cmd = command_constructor();
     command *head = NULL;
 
     while (cmd->args[i] != NULL)
     {
         if (strcmp(cmd->args[i], "|") == 0)
         {
-            j = 0;
-            curr_cmd->args[i] = NULL;
+            curr_cmd->is_piped = 1;
+            curr_cmd->args[j] = NULL;
             curr_cmd->next = command_constructor();
             if (head == NULL)
-            {
                 head = curr_cmd;
-                printf("Printing head\n");
-                print_command(head);
-            }
-            prev_cmd = curr_cmd;
             curr_cmd = curr_cmd->next;
-            i++;
+            j = 0;
         }
         else
         {
-            printf("ARGS PRIN %s\n", cmd->args[i]);
             curr_cmd->args[j] = (char *)malloc(strlen(cmd->args[i]) + 1);
             strcpy(curr_cmd->args[j], cmd->args[i]);
-            printf("ARGS %s\n", curr_cmd->args[j]);
             j++;
         }
         i++;
     }
-
     // Null-terminate the last command
     curr_cmd->args[i] = NULL;
     return head;
-}
-
-void print_next(command *cmd)
-{
-    while (cmd != NULL)
-    {
-        for (int i = 0; cmd->args[i] != NULL; i++)
-        {
-            printf("AAAAARGS %s ", cmd->args[i]);
-        }
-        printf("\n");
-        cmd = cmd->next; // Move to the next command in the pipeline
-    }
 }
 
 int execute_commands(char input[ARGS_MAX])
@@ -130,27 +111,24 @@ int execute_commands(char input[ARGS_MAX])
         {
             cmd->args[k] = (char *)malloc(strlen(command_token) + 1);
             strcpy(cmd->args[k], command_token);
+            cmd->args[k][strlen(command_token)] = '\0';
             k++;
             command_token = strtok(NULL, " \n");
         }
+        commands[k] = NULL;
         if (is_pipeline(cmd->args))
         {
-            print_command(cmd);
-            printf("Pipeline detected\n");
-            cmd->is_piped = 1;
             cmd = create_pipeline(cmd);
-            print_next(cmd);
         }
-
         if (k > 0)
         {
             contains_redirects(cmd);
             printf("Executing command: %s\n", cmd->args[0]);
-            // print_command(cmd);
+            print_command(cmd);
             if (cmd->is_piped)
             {
                 // Handle the pipeline (implement this separately)
-                // execute_pipeline(&cmd);
+                execute_pipeline(cmd);
             }
             else if (is_built_in_cmd(cmd->args[0]))
             {
@@ -176,6 +154,7 @@ int contains_redirects(command *cmd)
         if (strcmp(cmd->args[i], ">") == 0)
         {
             cmd->symbol = O_redirect;
+
             update_args(cmd, i);
             return 1;
         }
