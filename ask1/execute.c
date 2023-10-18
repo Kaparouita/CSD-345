@@ -7,50 +7,136 @@
 #include "commands.h"
 #include "mylib.h"
 
-
 int (*command_functions[])(char *args[]) = {
-    execute_ls,
-    execute_date,
-    execute_cat,
-    execute_rm,
-    execute_mkdir,
     execute_quit,
-    execute_chdir
-};
+    execute_chdir};
 
-
-int execute_commands(char input[ARGS_MAX]) {
-    char *commands[ARGS_MAX];
-    command *cmd = malloc(sizeof(command));
-    int i = 0;
-    char *token = strtok(input, ";");
-    while (token != NULL) {
-        commands[i] = token;
-        i++;
-        token = strtok(NULL, ";");
+int execute_built_in_commands(command *cmd)
+{
+    if (strcmp(cmd->args[0], "cd") == 0 || strcmp(cmd->args[0], "chdir") == 0)
+    {
+        return (*command_functions[1])(cmd->args);
     }
-    commands[i] = NULL;
-    for (int j = 0; j < i; j++) {
-        char *args[ARGS_MAX];
-        int k = 0;
-        char *command_token = strtok(commands[j], " \n");
-        while (command_token != NULL) {
-            args[k] = command_token;
-            k++;
-            command_token = strtok(NULL, " \n");
-        }
-        args[k] = NULL;
+    if (strcmp(cmd->args[0], "quit") == 0)
+    {
+        return (*command_functions[0])(cmd->args);
+    }
+    return (*command_functions[0])(cmd->args);
+}
 
-        if (args[0] != NULL) {
-            printf("Executing command: %s\n", args[0]);
-            if (is_valid_command(args[0],cmd)) {
-                command_functions[*cmd](args);
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+void execute_command_with_redirection(command *cmd)
+{
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        // Input Redirection >
+        if (cmd->symbol == I_redirect)
+        {
+            int input_fd = open(cmd->io_file, O_RDONLY);
+            if (input_fd < 0)
+            {
+                perror("Input redirection");
+                exit(1);
             }
-            else {
-                fprintf(stderr, "Unknown command: %s\n", args[0]);
-                return 0;
-            }
+            dup2(input_fd, STDIN_FILENO);
+            close(input_fd);
         }
+
+        // Output Redirection <
+        if (cmd->symbol == O_redirect)
+        {
+            int output_fd = open(cmd->io_file, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            if (output_fd < 0)
+            {
+                perror("Output redirection");
+                exit(1);
+            }
+            dup2(output_fd, STDOUT_FILENO);
+            close(output_fd);
+        }
+
+        // Append Output Redirection >>
+        if (cmd->symbol == DO_redirect)
+        {
+            int append_fd = open(cmd->io_file, O_WRONLY | O_CREAT | O_APPEND, 0666);
+            if (append_fd < 0)
+            {
+                perror("Append output redirection");
+                exit(1);
+            }
+            dup2(append_fd, STDOUT_FILENO);
+            close(append_fd);
+        }
+
+        execvp(cmd->args[0], cmd->args);
+        fprintf(stderr, "Command not found: %s\n", cmd->args[0]);
+        exit(1);
+    }
+    else if (pid > 0)
+    {
+        wait(NULL);
+    }
+    else
+    {
+        perror("fork");
+    }
+}
+
+void execute_pipeline(command *cmd)
+{
+
+    int pipefds[2];
+    pid_t child_pid;
+
+    while (cmd != NULL)
+    {
+        pipe(pipefds);
+        child_pid = fork();
+        if (child_pid == -1)
+        {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        else if (child_pid == 0)
+        {
+            dup2(pipefds[1], STDOUT_FILENO);
+            close(pipefds[0]);
+            execvp(cmd->args[0], cmd->args);
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            dup2(pipefds[0], STDIN_FILENO);
+            close(pipefds[1]);
+            cmd = cmd->next;
+        }
+    }
+
+    // Wait for all child processes to complete
+    while (wait(NULL) > 0)
+        ;
+}
+
+int execute_simple_commands(char *args[ARGS_MAX])
+{
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        execvp(args[0], args);
+        fprintf(stderr, "Command not found or wrong format for : %s\n", args[0]);
+        exit(1);
+    }
+    else if (pid > 0)
+    {
+        wait(NULL);
+    }
+    else
+    {
+        perror("fork");
     }
     return 1;
 }

@@ -5,85 +5,97 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <string.h>
-#include <libgen.h> 
+#include <libgen.h>
 
+char *current_dir;
 
-char * current_dir;
-
-int execute_chdir(char *args[ARGS_MAX]) {
-    
-    if (chdir(args[1]) != 0) {
+int execute_chdir(char *args[ARGS_MAX])
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "cd: missing argument\n");
+    }
+    else if (chdir(args[1]) != 0)
+    {
         perror("chdir");
         return 1;
     }
-    else {
+    else
+    {
         current_dir = (char *)malloc(PATH_MAX);
-        if (getcwd(current_dir, PATH_MAX) != NULL) {
-            current_dir= basename(current_dir);
+        if (getcwd(current_dir, PATH_MAX) != NULL)
+        {
+            current_dir = basename(current_dir);
         }
     }
     return 1;
 }
 
-char *get_current_dir() {
+char *get_current_dir()
+{
     return current_dir;
 }
 
-int execute_ls(char *args[ARGS_MAX]) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        execvp("ls", args);
-        perror("ls");
-        exit(1);
-    } else if (pid > 0) {
-        wait(NULL);
-    } else {
-        perror("fork");
+int execute_quit(char *args[ARGS_MAX])
+{
+    exit(0);
+}
+
+int is_built_in_cmd(char *cmd)
+{
+    if (strcmp(cmd, "cd") == 0 || strcmp(cmd, "chdir") == 0)
+    {
+        return 1;
     }
-    return 1; 
-}
-
-int execute_date(char *args[ARGS_MAX]) {
-    execvp("date", args);
-    perror("date");  
-    return 1;       
-}
-
-int execute_cat(char *args[ARGS_MAX]) {
-    execvp("cat", args);
-    perror("cat");  
-    return 1;      
-}
-int execute_rm(char *args[ARGS_MAX]) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        execvp("rm", args);
-        perror("rm");
-        exit(1);
-    } else if (pid > 0) {
-        wait(NULL);
-    } else {
-        perror("fork");
+    if (strcmp(cmd, "quit") == 0)
+    {
+        return 1;
     }
-    return 1;
+    return 0;
 }
 
-int execute_quit(char *args[ARGS_MAX]) {
-    loopflag = 0;
-    return 1;
-}
-
-
-int execute_mkdir(char *args[ARGS_MAX]) {
-    pid_t pid = fork();
-    if (pid == 0) {
-        execvp("mkdir", args);
-        perror("mkdir");
+command *command_constructor()
+{
+    command *cmd = (command *)malloc(sizeof(command));
+    if (cmd == NULL)
+    {
+        perror("Failed to allocate memory for command");
         exit(1);
-    } else if (pid > 0) {
-        wait(NULL);
-    } else {
-        perror("fork");
     }
-    return 1;
+
+    cmd->next = NULL;
+    cmd->args = (char **)malloc(ARGS_MAX * sizeof(char *));
+    cmd->is_piped = 0;
+    cmd->symbol = None;
+
+    return cmd;
+}
+
+void print_command(command *cmd)
+{
+    printf("Command: %s\n", cmd->args[0]);
+    printf("Arguments:\n");
+    for (int i = 1; cmd->args[i] != NULL; i++)
+    {
+        printf("- %s\n", cmd->args[i]);
+    }
+
+    printf("Redirection Symbol: ");
+    switch (cmd->symbol)
+    {
+    case O_redirect:
+        printf("Output Redirection (>)\n");
+        break;
+    case I_redirect:
+        printf("Input Redirection (<)\n");
+        break;
+    case DO_redirect:
+        printf("Append Output Redirection (>>)\n");
+        break;
+    default:
+        printf("None\n");
+        break;
+    }
+
+    printf("Piped: %s\n", cmd->is_piped ? "Yes" : "No");
 }
