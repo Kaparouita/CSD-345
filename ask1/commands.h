@@ -27,6 +27,7 @@ typedef struct command
 } command;
 
 command *command_constructor();
+command *create_pipeline(command *cmd);
 void print_command(command *cmd);
 
 extern int loopflag;
@@ -35,6 +36,7 @@ int execute_commands(char input[ARGS_MAX]);
 int execute_quit(char *args[ARGS_MAX]);
 int execute_chdir(char *args[ARGS_MAX]);
 int execute_simple_commands(char *args[ARGS_MAX]);
+int execute_commands(char input[ARGS_MAX]);
 
 int is_built_in_cmd(char *cmd);
 

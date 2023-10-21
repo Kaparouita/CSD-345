@@ -2,9 +2,8 @@ CC = gcc
 CFLAGS = -Wall
 LDFLAGS =
 
-SOURCES = commands.c execute.c noname.c shell.c 
+SOURCES = commands.c execute.c extras.c shell.c 
 
-# You should specify each source file separately, not as part of OBJECTS
 OBJECTS = $(SOURCES:.c=.o)
 
 TARGET = shell

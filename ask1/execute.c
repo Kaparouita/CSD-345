@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "commands.h"
 #include "mylib.h"
 
@@ -24,9 +26,57 @@ int execute_built_in_commands(command *cmd)
     return (*command_functions[0])(cmd->args);
 }
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
+int execute_commands(char input[ARGS_MAX])
+{
+    char *commands[ARGS_MAX];
+    int num_commands = split_command(input, commands);
+
+    for (int j = 0; j < num_commands; j++)
+    {
+        command *cmd = command_constructor();
+        int k = 0;
+
+        char *command_token = strtok(commands[j], " \n");
+        while (command_token != NULL)
+        {
+            cmd->args[k] = (char *)malloc(strlen(command_token) + 1);
+            strcpy(cmd->args[k], command_token);
+            cmd->args[k][strlen(command_token)] = '\0';
+            k++;
+            command_token = strtok(NULL, " \n");
+        }
+        commands[k] = NULL;
+        if (is_pipeline(cmd->args))
+        {
+            cmd = create_pipeline(cmd);
+        }
+        if (k > 0)
+        {
+            contains_redirects(cmd);
+            //printf("Executing command: %s\n", cmd->args[0]);
+            //print_command(cmd);
+            if (cmd->is_piped)
+            {
+                // Handle the pipeline (implement this separately)
+                execute_pipeline(cmd);
+            }
+            else if (is_built_in_cmd(cmd->args[0]))
+            {
+                execute_built_in_commands(cmd);
+            }
+            else if (!cmd->is_piped && cmd->symbol == None)
+            {
+                execute_simple_commands(cmd->args);
+            }
+            else
+            {
+                execute_command_with_redirection(cmd);
+            }
+        }
+    }
+    return 1;
+}
+
 
 void execute_command_with_redirection(command *cmd)
 {

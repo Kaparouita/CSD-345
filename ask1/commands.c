@@ -71,6 +71,38 @@ command *command_constructor()
     return cmd;
 }
 
+command *create_pipeline(command *cmd)
+{
+    int j, i = 0;
+    command *curr_cmd = command_constructor();
+    command *head = NULL;
+
+    while (cmd->args[i] != NULL)
+    {
+        if (strcmp(cmd->args[i], "|") == 0)
+        {
+            curr_cmd->is_piped = 1;
+            curr_cmd->args[j] = NULL;
+            curr_cmd->next = command_constructor();
+            if (head == NULL)
+                head = curr_cmd;
+            curr_cmd = curr_cmd->next;
+            j = 0;
+        }
+        else
+        {
+            curr_cmd->args[j] = (char *)malloc(strlen(cmd->args[i]) + 1);
+            strcpy(curr_cmd->args[j], cmd->args[i]);
+            j++;
+        }
+        i++;
+    }
+    // Null-terminate the last command
+    curr_cmd->args[i] = NULL;
+    return head;
+}
+
+
 void print_command(command *cmd)
 {
     printf("Command: %s\n", cmd->args[0]);
