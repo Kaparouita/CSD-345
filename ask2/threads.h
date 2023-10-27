@@ -5,7 +5,7 @@
 typedef enum {
     STUDYING,
     WAITING,
-    LEAVING
+    FINISHED,
 }status;
 
 typedef struct student {
@@ -17,5 +17,6 @@ typedef struct student {
 
 
 int random_number(int min, int max);
+char** init_students(int max_students);
 
 #endif /* threads_h */
