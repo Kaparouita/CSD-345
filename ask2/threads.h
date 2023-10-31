@@ -22,6 +22,7 @@ typedef struct room {
     int total_students;// total number of students
     student **students; // array of students in the room
     sem_t sem;
+    sem_t full_sem;
     int is_full;
 }room;
 

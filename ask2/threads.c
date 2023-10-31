@@ -5,29 +5,37 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-sem_t sem;
 room *reading_room ;
 
 void *thread_function(void *arg)
 {
    // char *student_AM = (char *)arg; //TODO: check if needed
+    int sem_value;
 
     student *s = (student *)malloc(sizeof(student));
     s->AM =  (char *)arg;
     s->state = WAITING;
-    s->study_time = random_number(3, 4); //TODO: replace with 3-15
+    s->study_time = random_number(2, 3); //TODO: replace with 3-15
 
     // Enter
     reading_room->students[reading_room->curr_students] = (student *)malloc(sizeof(student));
     reading_room->students[reading_room->curr_students] = s;
-
-    sem_wait(&reading_room->sem);
-    //if sem value is equal to max_students wait until its 0
-    if (reading_room->curr_students == reading_room->max_students) {
-            // If the room is full, set the flag and wait for all students to finish
-            sem_wait(&reading_room->finish_sem);
-    }
     reading_room->curr_students++;
+    print_room(reading_room);
+
+    sem_getvalue(&reading_room->sem, &sem_value);
+
+    if(sem_value == 0){
+        reading_room->is_full = 1;
+    }
+    while(sem_value == 0 || reading_room->is_full == 1){
+        sleep(1);
+        sem_getvalue(&reading_room->sem, &sem_value);
+        if(sem_value == 0){
+            reading_room->is_full = 1;
+        }
+    }
+    sem_wait(&reading_room->sem);
 
 
     // Study
@@ -41,8 +49,11 @@ void *thread_function(void *arg)
     // Update state
     s->state = FINISHED;
     sem_post(&reading_room->sem);
-    if (reading_room->curr_students == 1) {
-        sem_post(&reading_room->finish_sem);
+    sem_getvalue(&reading_room->sem, &sem_value);
+    print_room(reading_room);
+
+    if(sem_value == 8){
+        reading_room->is_full = 0;
     }
     reading_room->curr_students--;
     pthread_exit(NULL);
@@ -148,7 +159,8 @@ room *create_room(int max_students, int total_students) {
 
     new_room->students = (student **)malloc(max_students * sizeof(student *));
 
-    sem_init(&new_room->sem, 0, 0); 
+    sem_init(&new_room->sem, 0,8); 
+    sem_init(&new_room->full_sem, 0,1);
 
     return new_room;
 }
