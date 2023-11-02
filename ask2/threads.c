@@ -3,72 +3,103 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
+#define MAX_CONCURRENT_THREADS 8
+#define MAX_STUDY_TIME 15
+#define MIN_STUDY_TIME 5
+
 room *reading_room ;
+int thread_counter ;
 
 void *thread_function(void *arg)
 {
-   // char *student_AM = (char *)arg; //TODO: check if needed
-    int sem_value;
-
-    student *s = (student *)malloc(sizeof(student));
-    s->AM =  (char *)arg;
-    s->state = WAITING;
-    s->study_time = random_number(2, 3); //TODO: replace with 3-15
+    char message[100];
+    student *s = (student *)arg;
 
     // Enter
+
+    if (s->thread_id != 0)
+        sem_wait(&reading_room->sem_enter[s->thread_id-1]); // wait for previous student to enter
+    
+    pthread_mutex_lock(&reading_room->mutex);
     reading_room->students[reading_room->curr_students] = (student *)malloc(sizeof(student));
     reading_room->students[reading_room->curr_students] = s;
     reading_room->curr_students++;
-    print_room(reading_room);
-
-    sem_getvalue(&reading_room->sem, &sem_value);
-
-    if(sem_value == 0){
+    
+    if (thread_counter >= MAX_CONCURRENT_THREADS) {
+        sprintf(message,"Student %s was born\nStudent %s cannot enter the room because its full\n", s->AM,s->AM);
+        print_room(reading_room,message);
+        pthread_mutex_unlock(&reading_room->mutex);
+        sem_post(&reading_room->sem_enter[s->thread_id]);
         reading_room->is_full = 1;
-    }
-    while(sem_value == 0 || reading_room->is_full == 1){
-        sleep(1);
-        sem_getvalue(&reading_room->sem, &sem_value);
-        if(sem_value == 0){
-            reading_room->is_full = 1;
-        }
-    }
-    sem_wait(&reading_room->sem);
 
+        while( reading_room->is_full == 1){
+            sleep(1);
+            if (thread_counter == MAX_CONCURRENT_THREADS) {
+                reading_room->is_full = 1;
+            }
+        }
+        pthread_mutex_lock(&reading_room->mutex);
+        thread_counter++;
+        s->state = STUDYING;
+        sprintf(message, "Student %s entered the room\n", s->AM);
+        print_room(reading_room,message);
+        sem_post(&reading_room->sem_enter[s->thread_id]);
+        pthread_mutex_unlock(&reading_room->mutex);
+    }
+    else{
+        thread_counter++;
+        printf("Student %s was born\n", s->AM);
+        sem_post(&reading_room->sem_enter[s->thread_id]);
+        s->state = STUDYING;
+        print_room(reading_room,"");
+        pthread_mutex_unlock(&reading_room->mutex);
+    }
 
     // Study
-    printf("%s : start studying \n", s->AM);
+
     sleep(s->study_time);
-    
+
+
     // Leave
-    printf("%s : stop studying \n", s->AM);
 
-    
-    // Update state
+    pthread_mutex_lock(&reading_room->mutex);
     s->state = FINISHED;
-    sem_post(&reading_room->sem);
-    sem_getvalue(&reading_room->sem, &sem_value);
-    print_room(reading_room);
+    thread_counter--;
+    sprintf(message, "Student %s finished studying\n", s->AM);
+    print_room(reading_room,message);
+    pthread_mutex_unlock(&reading_room->mutex);
 
-    if(sem_value == 8){
+    if (thread_counter == 0) {
         reading_room->is_full = 0;
     }
-    reading_room->curr_students--;
+
     pthread_exit(NULL);
 }
 
-int workflow_manager(int total_students,int max_students){
+int workflow_manager(int total_students,int max_students,int init_value){
     int i ;
     pthread_t threads[total_students]; // Array to store thread IDs 
     reading_room = create_room(max_students, total_students);
+    thread_counter = 0;
+    char** students;
 
-    char** students = init_students(total_students);
+    if (init_value == 0)
+        students = init_students_numbers(total_students);
+    else
+        students = init_students(total_students);
 
     for (i = 0; i < total_students; i++)
     {
-        if (pthread_create(&threads[i], NULL, thread_function,students[i]) != 0)
+        student *s = (student *)malloc(sizeof(student));
+        s->AM =  students[i];
+        s->state = WAITING;
+        s->study_time = random_number(MIN_STUDY_TIME, MAX_STUDY_TIME);
+        s->thread_id = i;
+        
+        if (pthread_create(&threads[i], NULL, thread_function,s) != 0)
         {
             perror("Thread creation failed");
             return 1;
@@ -88,9 +119,27 @@ int workflow_manager(int total_students,int max_students){
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
-    workflow_manager(20,8); //TODO: add cmd args
+    int total_students;
+    int init_value = 0;
+
+    if (argc == 2 && strcmp(argv[1], "-n") == 0) {
+        init_value = 0;
+    } else if (argc == 2) {
+        printf("Invalid option. Usage: %s [-n]\n", argv[0]);
+        return 1;
+    }else {
+        printf("Usage: %s [-n]\n", argv[0]);
+        return 1;
+    }
+    printf("Enter the total number of students: ");
+    if (scanf("%d", &total_students) != 1) {
+        printf("Invalid input. Please enter an integer.\n");
+        return 1;
+    }
+
+    workflow_manager(total_students,MAX_CONCURRENT_THREADS,init_value);
     return 0;
 }
 
@@ -98,7 +147,7 @@ int main()
 
 char** init_students(int max_students){
     char** student_data = (char**)malloc(max_students * sizeof(char*));
-    //int student_count = 0;
+    int student_count = 0;
 
     FILE *file = fopen("student_data.csv", "r");
     if (file == NULL) {
@@ -106,20 +155,25 @@ char** init_students(int max_students){
         return student_data;
     }
 
-    // while (student_count < max_students) {
-    //     student_data[student_count] = (char *)malloc(10 * sizeof(char));
-    //     if (fscanf(file, " %9[^,],", student_data[student_count]) == 1) {
-    //         student_count++;
-    //     } else 
-    //         break; // EOF or error  
-    // }
+    while (student_count < max_students) {
+        student_data[student_count] = (char *)malloc(10 * sizeof(char));
+        if (fscanf(file, " %9[^,],", student_data[student_count]) == 1) {
+            student_count++;
+        } else 
+            break; // EOF or error  
+    }
+
+    fclose(file);
+    return student_data;
+}
+
+char** init_students_numbers(int max_students){
+    char** student_data = (char**)malloc(max_students * sizeof(char*));
     for (int i = 0; i < max_students; i++)
     {
         student_data[i] = (char *)malloc(10 * sizeof(char)); 
         sprintf(student_data[i] , "%d",i);
     }
-
-    fclose(file);
     return student_data;
 }
 
@@ -128,11 +182,11 @@ int random_number(int min, int max)
     return (rand() % max) + min;
 }
 
-void print_room(room *room){
-
+void print_room(room *room,char *message){
+    printf("%s",message);
     // Print study room status
     printf("Study room: |");
-    for (int i = 0; i < room->total_students; i++) {
+    for (int i = 0; i < room->curr_students; i++) {
         if (room->students[i]->state == STUDYING) {
             printf(" %s |", room->students[i]->AM);
         }
@@ -141,26 +195,32 @@ void print_room(room *room){
 
     // Print waiting room status
     printf("Waiting: |");
-    for (int i = 0; i < room->total_students; i++) {
+    for (int i = 0; i < room->curr_students; i++) {
         if (room->students[i]->state == WAITING) {
             printf(" %s |", room->students[i]->AM);
         }
     }
-    printf("\n");
+    printf("\n\n");
 }
 
 room *create_room(int max_students, int total_students) {
     room *new_room = (room *)malloc(sizeof(room));
 
-    new_room->max_students = max_students;
     new_room->curr_students = 0;
     new_room->total_students = total_students;
     new_room->is_full = 0;
 
     new_room->students = (student **)malloc(max_students * sizeof(student *));
 
-    sem_init(&new_room->sem, 0,8); 
-    sem_init(&new_room->full_sem, 0,1);
+
+    new_room->sem_enter = (sem_t *)malloc(total_students * sizeof(sem_t));
+    for (int i = 0; i < total_students; i++)
+    {
+        sem_init(&new_room->sem_enter[i], 0,0);
+    }
+   
+
+    pthread_mutex_init(&new_room->mutex, NULL);
 
     return new_room;
 }

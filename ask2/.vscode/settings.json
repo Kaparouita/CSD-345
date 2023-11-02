@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.ts": "typescript",
-        "pthread.h": "c"
+        "pthread.h": "c",
+        "unistd.h": "c"
     }
 }
