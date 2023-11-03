@@ -14,7 +14,7 @@
     ./threads  # Run the executable
 
 ### Extra features
-    execute with -n flag to run with the numbers instead of AMs
+    execute with -n flag to run with numbers instead of AMs (e.g. ./threads -n)
 
 ### How to clean
     make clean # Remove the executable and the object files

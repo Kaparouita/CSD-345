@@ -95,12 +95,14 @@ int workflow_manager(int total_students,int max_students,int init_value){
 
     for (i = 0; i < total_students; i++)
     {
+        // Create a new student
         student *s = (student *)malloc(sizeof(student));
         s->AM =  students[i];
         s->state = WAITING;
         s->study_time = random_number(MIN_STUDY_TIME, MAX_STUDY_TIME);
         s->thread_id = i;
-        
+
+        // Start his thread
         if (pthread_create(&threads[i], NULL, thread_function,s) != 0)
         {
             perror("Thread creation failed");
