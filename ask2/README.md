@@ -7,6 +7,7 @@
     When a student wants to read, he/she enters the room and sits on an available seat.
     If there are no available seats, he/she waits until all student that are studying leave.
     When a student finishes reading, he/she leaves the room.
+    Students AMs are inside the student_data.csv file.
 
 ### How to run
     make all   # Compile and create the executable

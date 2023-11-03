@@ -11,4 +11,4 @@ threads.o: threads.c threads.h
 	$(CC) $(CFLAGS) -c threads.c
 
 clean:
-	rm -f myprogram threads.o
+	rm -f threads threads.o

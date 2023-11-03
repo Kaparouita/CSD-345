@@ -22,10 +22,11 @@ typedef struct student {
 typedef struct room {
     int curr_students; // current number of students in the room
     int total_students;// total number of students
+    int waiting_line; // 
+    int is_full;
     student **students; // array of students in the room
     sem_t *sem_enter;
     pthread_mutex_t mutex;
-    int is_full;
 }room;
 
 /**

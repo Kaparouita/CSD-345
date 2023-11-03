@@ -35,13 +35,14 @@ void *thread_function(void *arg)
         sem_post(&reading_room->sem_enter[s->thread_id]);
         reading_room->is_full = 1;
 
-        while( reading_room->is_full == 1){
+        while( (reading_room->is_full == 1 ) || (reading_room->waiting_line != s->thread_id)){
             sleep(1);
             if (thread_counter == MAX_CONCURRENT_THREADS) {
                 reading_room->is_full = 1;
             }
         }
         pthread_mutex_lock(&reading_room->mutex);
+        reading_room->waiting_line++;
         thread_counter++;
         s->state = STUDYING;
         sprintf(message, "Student %s entered the room\n", s->AM);
@@ -51,6 +52,7 @@ void *thread_function(void *arg)
     }
     else{
         thread_counter++;
+        reading_room->waiting_line++;
         printf("Student %s was born\n", s->AM);
         sem_post(&reading_room->sem_enter[s->thread_id]);
         s->state = STUDYING;
@@ -68,7 +70,7 @@ void *thread_function(void *arg)
     pthread_mutex_lock(&reading_room->mutex);
     s->state = FINISHED;
     thread_counter--;
-    sprintf(message, "Student %s finished studying\n", s->AM);
+    sprintf(message, "Student %s finished ,studying time : %d sec\n", s->AM,s->study_time);
     print_room(reading_room,message);
     pthread_mutex_unlock(&reading_room->mutex);
 
@@ -122,20 +124,21 @@ int workflow_manager(int total_students,int max_students,int init_value){
 int main(int argc, char *argv[])
 {
     int total_students;
-    int init_value = 0;
+    int init_value = 1;
 
     if (argc == 2 && strcmp(argv[1], "-n") == 0) {
         init_value = 0;
     } else if (argc == 2) {
         printf("Invalid option. Usage: %s [-n]\n", argv[0]);
         return 1;
-    }else {
-        printf("Usage: %s [-n]\n", argv[0]);
-        return 1;
     }
     printf("Enter the total number of students: ");
     if (scanf("%d", &total_students) != 1) {
         printf("Invalid input. Please enter an integer.\n");
+        return 1;
+    }
+    if(total_students < 20 || total_students > 40){
+        printf("Invalid input. Please enter a number between 20-40.\n");
         return 1;
     }
 
@@ -209,6 +212,7 @@ room *create_room(int max_students, int total_students) {
     new_room->curr_students = 0;
     new_room->total_students = total_students;
     new_room->is_full = 0;
+    new_room->waiting_line = 0;
 
     new_room->students = (student **)malloc(max_students * sizeof(student *));
 
