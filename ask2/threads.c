@@ -119,6 +119,10 @@ int workflow_manager(int total_students,int max_students,int init_value){
             return 1;
         }
     }
+
+    // Free room
+    free_room(reading_room);
+    printf("All students finished studying ,free everything! \n");
     return 0;
 }
 
@@ -184,7 +188,7 @@ char** init_students_numbers(int max_students){
 
 int random_number(int min, int max)
 {
-    return (rand() % max) + min;
+    return min + (rand() % (max - min));
 }
 
 void print_room(room *room,char *message){
@@ -229,4 +233,16 @@ room *create_room(int max_students, int total_students) {
     pthread_mutex_init(&new_room->mutex, NULL);
 
     return new_room;
+}
+
+void free_room(room *room) {
+    for (int i = 0; i < room->total_students; i++)
+    {
+        free(room->students[i]);
+        sem_destroy(&room->sem_enter[i]);
+    }
+    pthread_mutex_destroy(&room->mutex);
+    free(room->students);
+    sem_destroy(room->sem_enter);
+    free(room);
 }

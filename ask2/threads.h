@@ -30,6 +30,22 @@ typedef struct room {
 }room;
 
 /**
+ * @brief thread function for the students 
+ * 
+ * @param arg  student object
+ * @return void* 
+ */
+void *thread_function(void *arg);
+/**
+ * @brief workflow manager for the threads
+ * 
+ * @param total_students  total number of students
+ * @param max_students  max number of students in the room
+ * @param init_value  0 for AMs , 1 for numbers
+ * @return int 
+ */
+int workflow_manager(int total_students,int max_students,int init_value);
+/**
  * @brief Create a room object
  * 
  * @param max_students  max number of students in the room
@@ -37,9 +53,40 @@ typedef struct room {
  * @return room* 
  */
 room *create_room(int max_students, int total_students);
+/**
+ * @brief print room status
+ * 
+ * @param room  room object
+ * @param msg  message to print in the beginning
+ */
 void print_room(room *room, char *msg);
+/**
+ * @brief get random number between min and max
+ * 
+ * @param min 
+ * @param max 
+ * @return int 
+ */
 int random_number(int min, int max);
+/**
+ * @brief init students as AMs
+ * 
+ * @param max_students  max number of students
+ * @return char** 
+ */
 char** init_students(int max_students);
+/**
+ * @brief init students as numbers
+ * 
+ * @param max_students max number of students
+ * @return char** 
+ */
 char** init_students_numbers(int max_students);
+/**
+ * @brief free room object
+ * 
+ * @param room 
+ */
+void free_room(room *room);
 
 #endif /* threads_h */

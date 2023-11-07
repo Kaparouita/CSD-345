@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Werror
-LDFLAGS = -lpthread
+LDFLAGS = -pthread
 
 all: threads
 
