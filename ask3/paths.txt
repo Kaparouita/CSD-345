@@ -1,0 +1,36 @@
+FILE                PATH
+            
+unistd_32           linux-2.6.38.1/arch/x86/include/asm/unistd_32.h
+syscall_table_32.S  linux-2.6.38.1/arch/x86/kernel/syscall_table_32.S
+syscalls.h          linux-2.6.38.1/include/asm-generic/syscalls.h
+Makefile            linux-2.6.38.1/kernel/Makefile
+sched.h             linux-2.6.38.1/include/linux/sched.h
+d_params.h             linux-2.6.38.1/include/linux/d_params.h
+
+
+get_task_params.c   linux-2.6.38.1/kernel/get_task_params.c
+set_task_params.c   linux-2.6.38.1/kernel/set_task_params.c
+
+Create linux-2.6.38.1/kernel/dummy_sys.c
+
+
+commands
+
+cp ~/HY345/ask3/kernel/unistd_32.h linux-2.6.38.1/arch/x86/include/asm/unistd_32.h
+cp ~/HY345/ask3/kernel/syscall_table_32.S linux-2.6.38.1/arch/x86/kernel/syscall_table_32.S &&
+cp ~/HY345/ask3/kernel/syscalls.h          linux-2.6.38.1/include/asm-generic/syscalls.h &&
+cp ~/HY345/ask3/kernel/Makefile            linux-2.6.38.1/kernel/Makefile &&
+cp ~/HY345/ask3/kernel/sched.h             linux-2.6.38.1/include/linux/sched.h &&
+cp ~/HY345/ask3/kernel/d_params.h          linux-2.6.38.1/include/linux/d_params.h &&
+cp ~/HY345/ask3/kernel/get_task_params.c   linux-2.6.38.1/kernel/get_task_params.c &&
+cp ~/HY345/ask3/kernel/set_task_params.c   linux-2.6.38.1/kernel/set_task_params.c 
+
+
+cp -r ~/HY345/ask3/demo .
+
+
+
+
+
+
+scp csd4300@firiki.csd.uoc.gr:/spare/csd4300/linux-2.6.38.1/makefile .
