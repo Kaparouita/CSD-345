@@ -1,0 +1,12 @@
+int turn
+int intersted[n]
+
+enter_region (int process){
+
+    int other
+
+    other = 1 - process
+    intersted[process] = TRUE
+    process = turn
+    while (process == turn && intersted[other] == TRUE)
+}
